@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# This script is displaying "Best School" 10 times
+vari="10"
+while ((vari > 0))
+do
+	echo "Best School"
+	vari=$((vari - 1))
+done
