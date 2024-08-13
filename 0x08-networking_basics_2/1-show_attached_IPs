@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Script that displays IPV4 IPS on a machine
-# prints the IP address of the machine.
-# Displays all active IPv4 addresses.
-ifconfig | grep -Eo "inet (addr:)?([0-9]*\.){3}[0-9]*" | cut -b 11-
+# Script that displays all active IPv4 IPs on a machine
+
+# Using ifconfig to find IPv4 addresses
+ifconfig | grep -Eo "inet (addr:)?([0-9]*\.){3}[0-9]*" | grep -v "127.0.0.1" | awk '{ print $2 }'
