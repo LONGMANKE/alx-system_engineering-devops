@@ -1,5 +1,24 @@
 #!/usr/bin/env bash
-# Script that displays IPV4 IPS on a machine
-# prints the IP address of the machine.
-# Displays all active IPv4 addresses.
-ifconfig | grep -Eo "inet (addr:)?([0-9]*\.){3}[0-9]*" | cut -b 11-
+# Script to configure DNS resolution for localhost and facebook.com
+
+# Make sure the script is run as root
+if [ "$EUID" -ne 0 ]; then
+  echo "Please run as root"
+  exit
+fi
+
+# Backup the original hosts file
+cp /etc/hosts /etc/hosts.bak
+
+# Modify the hosts file to resolve localhost to 127.0.0.2
+sed -i '/127.0.0.1/s/localhost/localhost\n127.0.0.2\tlocalhost/' /etc/hosts
+
+# Add facebook.com resolving to 8.8.8.8
+echo "8.8.8.8 facebook.com" >> /etc/hosts
+
+# Confirm changes
+echo "Modified /etc/hosts:"
+cat /etc/hosts
+
+# Display message
+echo "DNS configuration updated. localhost now resolves to 127.0.0.2, and facebook.com resolves to 8.8.8.8."
