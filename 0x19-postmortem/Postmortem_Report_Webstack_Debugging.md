@@ -1,6 +1,6 @@
 # Postmortem Report
 
-## 504 Error while accessing a given URL
+## Database Connection Outage
 
 <p align="center">
 <img src="https://raw.githubusercontent.com/MitaliSengupta/holberton-system_engineering-devops/master/0x19-postmortem/image.gif" width=100% height=100% />
@@ -10,28 +10,45 @@
 
 #### Summary
 
-On September 11th, 2018 at midnight the server access went down resulting in 504 error for anyone trying to access a website. Background on the server being based on a LAMP stack.
+## Issue Summary
 
-#### Timeline
+- **Duration:** The outage lasted for 3 hours, from 9:00 AM to 12:00 PM (GMT+3) on August 10, 2024.
+- **Impact:** The outage affected the company's primary web application, resulting in downtime for all users. Approximately 100% of active users (around 5,000) were unable to access the service, experiencing errors such as "500 Internal Server Error" and "Unable to connect to the database."
+- **Root Cause:** The root cause was a misconfigured connection pool on the database server, which led to the exhaustion of available connections, causing the web application to fail in establishing new database connections.
 
-- **00:00 PST** - 500 error for anyone trying to access the website
-- **00:05 PST** - Ensuring Apache and MySQL are up and running.
-- **00:10 PST** - The website was not loading properly which on background check revealed that the server was working properly as well as the database.
-- **00:12 PST** - After quick restart to Apache server returned a status of 200 and OK while trying to curl the website.
-- **00:18 PST** - Reviewing error logs to check where the error might be coming from.
-- **00:25 PST** - Check /var/log to see that the Apache server was being prematurely shut down. The error log for PHP were nowhere to be found.
-- **00:30 PST** - Checking php.ini settings revealed all error logging had been turned off. Turning the error logging on.
-- **00:32 PST** - Restarting apache server and going to the error logs to check what is being logged into the php error logs.
-- **00:36 PST** - Reviewing error logs for php revealed a mistyped file name which was resulting in incorrect loading and premature closing of apache.
-- **00:38 PST** - Fixing file name and restarting Apache server.
-- **00:40 PST** - Server is now running normally and the website is loading properly.
+## Timeline
 
+- **9:00 AM:** Issue detected through automated monitoring alerts indicating an increase in the error rate and a drop in successful HTTP requests.
+- **9:05 AM:** Engineers on-call noticed the alerts and began investigating the application logs, which showed repeated database connection errors.
+- **9:20 AM:** Initial assumption was that the database server was down. The database server logs were checked, showing no signs of downtime, but the number of active connections was unusually high.
+- **9:40 AM:** Engineers restarted the web servers, suspecting a possible memory leak or resource exhaustion, but the issue persisted.
+- **10:00 AM:** The incident was escalated to the database administration team, who started analyzing the database performance and configuration.
+- **10:20 AM:** Misleading investigation paths included checking for network issues and possible DDoS attacks, but these were ruled out after analyzing network traffic and firewall logs.
+- **10:40 AM:** The database team identified that the connection pool was configured with a maximum of 50 connections, which was insufficient for peak traffic loads.
+- **11:00 AM:** The connection pool configuration was adjusted, increasing the maximum connections to 200 and optimizing the idle connection timeout settings.
+- **11:30 AM:** The web application was restarted, and the error rate gradually decreased as new connections were established successfully.
+- **12:00 PM:** The issue was resolved, and normal service was restored. A post-incident meeting was scheduled to review the event and discuss corrective actions.
 
-#### Root Cause and Resolution
+## Root Cause and Resolution
 
-The issue was connected with a wrong file name being reffered to in the wp-settings.php file. The error was raised when trying to curl the server, wherein the server responded with 500 error. By checking the error logs it was found that no error log file was being created for the php errors and reading the default error log for apache did not result in much information regarding the premature closing of the server. Once understood that the errors for php logs were not being directed anywhere the engineer chose to review the error log setting for the php in the php.ini file and found that all error logging was turned off. Once turned on, the error logging the apache server was restarted to check if any errors were being registerd in the log. As suspected, the php log showed that a file with a .phpp extension was not found in the wp-settings.php file. This was clearly a misspelled error that resulted in the error to site access. As this was one server that the error was found in, this error might have been replicated in other servers as well. An easy fix by changing the file extension by puppet would result in the fix being made to other servers as well. A quick deployment of the puppet code replaced all misspelled file extensions with the right one and restarting of the server resulted in properly loading of the site and server.
+**Root Cause:**  
+The outage was caused by an improperly configured connection pool in the web application's database connection settings. The connection pool had a maximum limit of 50 connections, which was sufficient under normal conditions but inadequate during peak usage. As the number of users increased, the application exhausted all available connections, leading to errors when trying to establish new connections.
 
-#### Corrective and Preventive Measures
+**Resolution:**  
+The resolution involved increasing the maximum connection pool size from 50 to 200, allowing more simultaneous database connections to be established. Additionally, idle connection timeout settings were optimized to ensure that unused connections were released promptly, freeing up resources for new connections. After making these changes, the web application was restarted, and normal operation resumed without any further connection issues.
 
-- All servers and sites should have error logging turned on to easily identify errors if anything goes wrong.
-- All servers and sites should be tested locally before deploying on a multi-server setup this will result in correcting errors before going live resulting in less fixing time if site goes down.
+## Corrective and Preventative Measures
+
+**Improvements:**
+1. **Capacity Planning:** Implement regular reviews of connection pool configurations based on user traffic patterns and peak usage forecasts.
+2. **Enhanced Monitoring:** Set up more granular monitoring for database connection pool usage, with alerts for thresholds approaching maximum capacity.
+3. **Database Optimization:** Review and optimize database queries to reduce connection time, ensuring efficient use of resources.
+4. **Incident Response Training:** Conduct training sessions for the engineering team on database troubleshooting and connection pool management to improve response times in future incidents.
+
+**Tasks:**
+1. **Update Connection Pool Settings:** Review and adjust connection pool settings across all environments (development, staging, production) to align with the current traffic loads.
+2. **Implement Monitoring Alerts:** Add monitoring for connection pool usage, with specific alerts for when usage exceeds 80% of the configured capacity.
+3. **Perform Load Testing:** Conduct load testing on the web application to ensure the connection pool can handle peak traffic scenarios.
+4. **Schedule Regular Configuration Reviews:** Set up quarterly reviews of database and application server configurations to anticipate future scaling needs.
+
+By implementing these corrective measures, we aim to prevent similar incidents from occurring in the future, ensuring higher availability and reliability of our services.
