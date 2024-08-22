@@ -1,25 +1,27 @@
 server {
     listen 80;
-    server_name 127.0.0.1 100.26.221.131;
+    listen [::]:80 default_server;
+    add_header X-Served-By 2135-web-01;
+    root   /etc/nginx/html;
+    index  index.html index.htm;
+    location /redirect_me {
+        return 301 https://www.youtube.com/watch?v4;
+    }
+    root /var/www/html;
 
-    location /airbnb-onepage/ {
-        include proxy_params;
-	proxy_pass http://localhost:5000/airbnb-onepage/;
+    server_name _;
+
+    location /airbnb-onepage {
+        proxy_pass http://0.0.0.0:5000/airbnb-onepage;
     }
 
-    location /airbnb-dynamic/number_odd_or_even/ {
-        rewrite /airbnb-dynamic/(.*) $1 break;
-        include proxy_params;
-	proxy_pass http://localhost:5001/;
+    location /hbnb_static {
+        alias /data/web_static/current/;
     }
 
-    location /api/ {
-        include proxy_params;
-	proxy_pass http://localhost:5002/api/;
-    }
-
-    location / {
-        include proxy_params;
-	proxy_pass http://localhost:5003/;
-    }
+    location /{
+        # First attempt to serve request as file, then
+        # as directory, then fall back to displaying a 404.
+        try_files $uri $uri/ =404;
+     }
 }
